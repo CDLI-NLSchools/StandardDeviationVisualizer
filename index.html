@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Standard Deviation Visualizer — Math 2201</title>
+<style>
+  :root{--ink:#1c2b33;--accent:#7c3aed;--accent2:#b45309;--bg:#f7f5f0;--card:#ffffff;--line:#d8d2c4;}
+  *{box-sizing:border-box;font-family:Verdana,Geneva,sans-serif;}
+  body{margin:0;background:var(--bg);color:var(--ink);}
+  .wrap{max-width:920px;margin:0 auto;padding:20px 16px 32px;}
+  h1{font-size:1.35rem;margin:0 0 4px;}
+  .sub{font-size:.9rem;color:#4b5a61;margin:0 0 16px;line-height:1.45;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px;}
+  svg{width:100%;height:auto;display:block;touch-action:none;}
+  .pt{cursor:grab;} .pt:active{cursor:grabbing;}
+  .steps{font-size:.92rem;line-height:1.7;font-variant-numeric:tabular-nums;}
+  .steps .big{font-size:1.05rem;font-weight:bold;color:var(--accent);}
+  button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:.9rem;cursor:pointer;}
+  button.alt{background:#fff;color:var(--accent);border:1.5px solid var(--accent);}
+  button:hover{opacity:.88;}
+  .challenge{border-left:5px solid var(--accent2);background:#fdf6ec;}
+  .challenge p{margin:4px 0;line-height:1.5;font-size:.93rem;}
+  #verdict{font-weight:bold;} .ok{color:#15803d;} .notyet{color:#b45309;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Standard Deviation Visualizer</h1>
+  <p class="sub"><b>Standard deviation</b> is the typical distance of the data values from their mean. Drag the points: squeeze them toward the mean and the standard deviation shrinks; spread them out and it grows.
+  The bars under each point show its deviation — the farther a point sits from the mean, the more it pulls the standard deviation up.</p>
+
+  <div class="card">
+    <svg id="stage" viewBox="0 0 880 190" role="img" aria-label="Data points on a number line with deviation bars"></svg>
+    <div class="steps" id="steps"></div>
+  </div>
+
+  <div class="card challenge">
+    <p><b>Target challenge:</b> arrange the points so the standard deviation lands within <b>0.2</b> of the target.</p>
+    <p>Target SD: <b id="targetLabel">3.0</b> &nbsp; <span id="verdict" class="notyet">Keep dragging…</span></p>
+    <p><button id="btnTarget">New target</button> <button id="btnReset" class="alt">Reset points</button></p>
+    <p style="font-size:.85rem;color:#4b5a61;">Notice: one point dragged far away moves the standard deviation much more than several points nudged a little. Squaring the deviations is why — distance counts double, then counts again.</p>
+  </div>
+</div>
+<script>
+(function(){
+  var MIN=0, MAX=20, W=880, PAD=40, Y=70;
+  function x(v){ return PAD+(v-MIN)/(MAX-MIN)*(W-2*PAD); }
+  function v(xpx){ var val=MIN+(xpx-PAD)/(W-2*PAD)*(MAX-MIN); val=Math.round(val*2)/2; return Math.max(MIN,Math.min(MAX,val)); }
+  var start=[6,8,9,10,10,11,12,14];
+  var data=start.slice();
+  var target=3.0;
+  function mean(a){ return a.reduce(function(s,n){return s+n;},0)/a.length; }
+  function sd(a){ var m=mean(a); var ss=a.reduce(function(s,n){return s+(n-m)*(n-m);},0); return Math.sqrt(ss/a.length); }
+  function fmt(n,d){ return n.toFixed(d===undefined?2:d); }
+  function render(){
+    var m=mean(data), s=sd(data), ss=data.reduce(function(sm,n){return sm+(n-m)*(n-m);},0);
+    var str='';
+    str+='<line x1="'+PAD+'" y1="'+Y+'" x2="'+(W-PAD)+'" y2="'+Y+'" stroke="#8a8378" stroke-width="2"/>';
+    for(var t=MIN;t<=MAX;t+=2){ str+='<line x1="'+x(t)+'" y1="'+(Y-6)+'" x2="'+x(t)+'" y2="'+(Y+6)+'" stroke="#8a8378" stroke-width="1.5"/><text x="'+x(t)+'" y="'+(Y+58)+'" font-size="12" text-anchor="middle" fill="#4b5a61">'+t+'</text>'; }
+    str+='<line x1="'+x(m)+'" y1="16" x2="'+x(m)+'" y2="'+(Y+30)+'" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="6 4"/>';
+    str+='<text x="'+x(m)+'" y="14" font-size="12.5" text-anchor="middle" font-weight="bold" fill="#7c3aed">mean = '+fmt(m)+'</text>';
+    data.forEach(function(val,i){
+      str+='<rect x="'+Math.min(x(val),x(m))+'" y="'+(Y+16)+'" width="'+Math.abs(x(val)-x(m))+'" height="7" fill="#b45309" opacity="0.65"/>';
+      str+='<circle class="pt" data-i="'+i+'" cx="'+x(val)+'" cy="'+Y+'" r="11" fill="#7c3aed" stroke="#fff" stroke-width="2.5"/>';
+    });
+    document.getElementById('stage').innerHTML=str;
+    document.getElementById('steps').innerHTML=
+      'Sum of squared deviations from the mean: <b>'+fmt(ss)+'</b><br>'+
+      'Variance (divide by '+data.length+' values): <b>'+fmt(ss/data.length)+'</b><br>'+
+      '<span class="big">Standard deviation = &radic;'+fmt(ss/data.length)+' = '+fmt(s)+'</span>';
+    var el=document.getElementById('verdict');
+    if(Math.abs(s-target)<=0.2){ el.className='ok'; el.textContent='On target — SD is '+fmt(s)+', within 0.2 of '+fmt(target,1)+'.'; }
+    else { el.className='notyet'; el.textContent='Current SD: '+fmt(s)+' — '+(s<target?'spread the points out more.':'pull the points in closer.'); }
+    bind();
+  }
+  function bind(){
+    document.querySelectorAll('.pt').forEach(function(c){
+      c.addEventListener('pointerdown', function(e){
+        e.preventDefault(); c.setPointerCapture(e.pointerId);
+        var i=+c.getAttribute('data-i'), svg=document.getElementById('stage');
+        function move(ev){ var r=svg.getBoundingClientRect(); data[i]=v((ev.clientX-r.left)/r.width*W); render(); }
+        function up(){ c.removeEventListener('pointermove',move); c.removeEventListener('pointerup',up); }
+        c.addEventListener('pointermove',move); c.addEventListener('pointerup',up);
+      });
+    });
+  }
+  document.getElementById('btnTarget').addEventListener('click',function(){
+    target=Math.round((1+Math.random()*5.5)*2)/2;
+    document.getElementById('targetLabel').textContent=fmt(target,1);
+    render();
+  });
+  document.getElementById('btnReset').addEventListener('click',function(){ data=start.slice(); render(); });
+  render();
+})();
+</script>
+</body>
+</html>
